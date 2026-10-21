@@ -1,0 +1,440 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0f2e">
+<title>🚌</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+  :root{--naranja:#ff7a1a;--naranja2:#c4510a;--verde:#2ec4b6;--oscuro:rgba(10,15,40,.78);}
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;background:#1b2a5e;overscroll-behavior:none}
+  body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#fff;overflow:hidden;text-align:center;-webkit-text-size-adjust:100%;-webkit-user-select:none;user-select:none;touch-action:manipulation}
+  .px{font-family:"Press Start 2P",ui-monospace,Menlo,Consolas,monospace}
+  #cielo{position:fixed;top:0;left:0;right:0;background:linear-gradient(#0b0f2e,#1b2a5e);z-index:0;overflow:hidden}
+  .estrella{position:absolute;width:2px;height:2px;background:#fff;animation:titila 2s steps(2) infinite}
+  @keyframes titila{50%{opacity:.2}}
+  #fondo{position:fixed;left:0;bottom:0;image-rendering:crisp-edges;image-rendering:pixelated;z-index:0}
+  .screen{position:fixed;top:0;left:0;right:0;bottom:0;display:flex;align-items:flex-start;justify-content:center;
+    padding:max(90px,19vh,calc(env(safe-area-inset-top) + 66px)) max(18px,env(safe-area-inset-right)) max(18px,env(safe-area-inset-bottom)) max(18px,env(safe-area-inset-left));
+    overflow-y:auto;-webkit-overflow-scrolling:touch;opacity:0;pointer-events:none;transition:opacity .5s steps(5);z-index:2}
+  .screen.on{opacity:1;pointer-events:auto}
+  .panel{background:var(--oscuro);border:4px solid #fff;box-shadow:6px 6px 0 rgba(0,0,0,.45);
+    padding:22px 18px;max-width:540px;width:100%;display:flex;flex-direction:column;align-items:center}
+  .regalo{font-size:84px;cursor:pointer;animation:salta 1s steps(4) infinite}
+  @keyframes salta{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
+  h1{font-size:clamp(14px,4.4vw,22px);line-height:1.5;margin:12px 0 8px;color:#ffd36b;text-shadow:3px 3px 0 #000}
+  p.sub{opacity:.95;font-size:16px;margin-top:4px}
+  #texto{font-size:clamp(20px,5.5vw,30px);min-height:3.2em;line-height:1.35;display:flex;align-items:center;justify-content:center;font-weight:600}
+  .fade{animation:aparece .5s steps(5) both}
+  @keyframes aparece{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+  .dia{margin:14px 0 6px;background:#0d1230;border:4px solid var(--naranja);padding:14px 16px;line-height:1.6;
+    font-family:"Press Start 2P",ui-monospace,monospace;font-size:clamp(11px,3.6vw,20px);color:var(--verde);
+    box-shadow:4px 4px 0 #000;animation:parpadea 1.2s steps(2) infinite;max-width:100%}
+  @keyframes parpadea{50%{border-color:#ffd36b}}
+  button{font-family:"Press Start 2P",ui-monospace,Menlo,monospace;font-size:13px;color:#fff;border:0;cursor:pointer;
+    background:var(--naranja);padding:15px 20px;margin-top:16px;box-shadow:0 5px 0 var(--naranja2),0 5px 0 4px #000;transition:transform .08s}
+  button:active{transform:translateY(5px);box-shadow:0 0 0 4px #000}
+  #viaje{position:fixed;top:max(90px,19vh,calc(env(safe-area-inset-top) + 82px));left:50%;transform:translateX(-50%);z-index:3;opacity:0;pointer-events:none;
+    background:var(--oscuro);border:4px solid #fff;padding:14px 16px;font-size:clamp(10px,3vw,14px);line-height:1.6;
+    width:calc(100% - 36px);max-width:520px;transition:opacity .4s steps(4)}
+  #viaje.on{opacity:1}
+  @media (max-height:520px){
+    .screen{padding-top:max(44px,calc(env(safe-area-inset-top) + 36px));padding-bottom:8px}
+    .panel{padding:12px 14px}.regalo{font-size:52px}h1{margin:6px 0 4px}
+    button{margin-top:10px;padding:12px 16px}#texto{min-height:2.4em}.dia{margin:8px 0 4px;padding:10px 12px}
+  }
+</style>
+</head>
+<body>
+<div id="cielo"></div>
+<canvas id="fondo"></canvas>
+<div id="viaje" class="px"></div>
+
+<section class="screen" id="s2">
+  <div class="panel">
+    <div id="texto"></div>
+    <button id="sig">SIGUE ▶</button>
+  </div>
+</section>
+<section class="screen" id="s3">
+  <div class="dia" id="dia"></div>
+</section>
+
+<script>
+/* ================= PERSONALIZA ================= */
+const DIA = "SÁBADO 24 OCTUBRE";
+const T_INICIO  = "Voy a ir a robarme una cachetoncita 🥷🏼";
+const T_SPS     = "Púchica, nuay nada aquí 😪";
+const T_CHICA   = "Uuyyy, es esa muchacha 🙂‍↕️";
+const T_FINAL   = "Vengo a secuestrarla educadamente 😂";
+/* ============================================= */
+
+const $ = id => document.getElementById(id);
+const pantallas = ["s2","s3"];
+function ir(n){pantallas.forEach((p,i)=>$(p).classList.toggle("on",i===n));}
+
+/* ---------- lienzo pixelado ---------- */
+const cv = $("fondo"), ctx = cv.getContext("2d");
+const H = 90; let W = 120;
+function medir(){
+  const vw = innerWidth, vh = innerHeight, asp = vw/vh; let ch;
+  if(asp < 4/3){ W = 120; ch = Math.round(vw*.75); }
+  else { W = Math.round(H*asp); ch = vh; }
+  cv.style.width = vw+"px"; cv.style.height = ch+"px"; $("cielo").style.bottom = ch+"px";
+  cv.width = W; cv.height = H;
+}
+addEventListener("resize", medir); addEventListener("orientationchange", ()=>setTimeout(medir,200)); medir();
+for(let k=0;k<40;k++){
+  const s=document.createElement("div"); s.className="estrella";
+  s.style.left=Math.random()*100+"%"; s.style.top=Math.random()*100+"%"; s.style.animationDelay=(Math.random()*2)+"s";
+  $("cielo").appendChild(s);
+}
+const CIELO = ["#1b2a5e","#243b7a","#2f4d91","#4a64a8","#7a7fb8","#b58fb0","#e59a9a","#ffa870","#ffbe6b","#ffd36b"];
+const CAPAS = [
+  {base:.60, a:6, f:.050, v: 2,  c:"#4c6fa5", top:"#7597cf"},
+  {base:.71, a:7, f:.065, v: 5,  c:"#3f8a5a", top:"#66b57f"},
+  {base:.82, a:5, f:.090, v:10,  c:"#2c6e3f", top:"#4f9a5f"},
+];
+let dist = 0;
+function hy(L,x){ const s = x + dist*L.v; return Math.floor(L.base*H + Math.sin(s*L.f)*L.a + Math.sin(s*L.f*2.3+1)*L.a*.4); }
+function rect(c,x,y,w,h){ctx.fillStyle=c;ctx.fillRect(Math.floor(x),Math.floor(y),w,h);}
+
+/* letras para el rótulo de Choloma */
+const FN={
+  Y:["101","101","010","010","010"], O:["111","101","101","101","111"], C:["111","100","100","100","111"],
+  H:["101","101","111","101","101"], L:["100","100","100","100","111"], A:["010","101","111","101","101"],
+  M:["10001","11011","10101","10001","10001"], "*":["01010","11111","11111","01110","00100"]
+};
+function texto(s,x,y,sc,cols){
+  let cx=x;
+  [...s].forEach((ch,i)=>{
+    const g=FN[ch];
+    g.forEach((row,r)=>[...row].forEach((v,q)=>{ if(v==="1") rect(cols[i%cols.length],cx+q*sc,y+r*sc,sc,sc); }));
+    cx+=(g[0].length+1)*sc;
+  });
+}
+function palma(R,x,h){
+  R("#8a6a3a",x,-h,1,h-2);
+  R("#2f9e44",x-4,-h-1,9,1); R("#2f9e44",x-3,-h-2,7,1); R("#2f9e44",x-1,-h-3,3,1);
+  R("#2f9e44",x-4,-h,1,1); R("#2f9e44",x+4,-h,1,1);
+}
+
+/* ---------- árbol alto con copa y tronco ---------- */
+function elipse(R,cx,cy,rx,ry,c){
+  for(let dy=-ry;dy<=ry;dy++){ const hw=Math.round(rx*Math.sqrt(1-(dy*dy)/(ry*ry))); R(c,cx-hw,cy+dy,hw*2+1,1); }
+}
+function arbol(R,x,h){
+  const cx=x+4, bot=-14, cy=Math.round((-h+bot)/2), ry=Math.round((h+bot)/2);   // la copa baja hasta cubrir el tronco
+  R("#6b4a26",cx,-32,2,31); R("#8a6a3a",cx,-32,1,31);            // tronco: sube hasta dentro de la copa
+  R("#6b4a26",cx-1,-2,4,2);                                      // base
+  elipse(R,cx-3,bot-7,3,7,"#1f6b35"); elipse(R,cx+4,bot-6,3,6,"#1f6b35");   // lóbulos bajos
+  elipse(R,cx,bot-6,4,6,"#1f6b35");                              // lóbulo central bajo (tapa la unión)
+  elipse(R,cx,cy,5,ry,"#1f6b35");                                // copa alta y angosta
+  elipse(R,cx,cy-1,4,ry-2,"#2f9e44");
+  elipse(R,cx-1,cy-3,2,Math.max(3,ry-8),"#4cc15f");              // luz
+  for(let k=0;k<10;k++){                                         // hojas sueltas
+    const lx=cx-4+((k*5+x)%9), ly=cy-ry+3+((k*7+x)%(ry*2-6));
+    R(k%2?"#4cc15f":"#17552b",lx,ly,1,1);
+  }
+}
+
+/* ---------- parada 1: CHOLOMA ---------- */
+function dibujaCholoma(X,g){
+  const R=(c,x,y,w,h)=>rect(c,X+x,g+y,w,h);
+  [[4,60],[28,66],[52,62],[76,58]].forEach(([x,h])=>arbol(R,x,h));   // árboles altos
+  [-8,18,42,66,88].forEach((x,i)=>{                             // astas y banderas (8x6 cada una)
+    R("#e8e8e8",x,-46,1,46);
+    const f=(c,dx,dy,w,h)=>R(c,x+1+dx,-46+dy,w,h);
+    if(i===0){                                                   // Guatemala: celeste, blanco, celeste (vertical)
+      f("#4997d0",0,0,3,6); f("#fff",3,0,2,6); f("#4997d0",5,0,3,6);
+      f("#2f9e44",3,2,2,1); f("#c9a227",3,3,2,1);
+    } else if(i===1){                                            // El Salvador: azul, blanco, azul
+      f("#0f47af",0,0,8,2); f("#fff",0,2,8,2); f("#0f47af",0,4,8,2);
+      f("#ffd36b",3,2,2,1); f("#2f9e44",3,3,2,1);
+    } else if(i===2){                                            // Honduras: azul, blanco, azul con 5 estrellas
+      f("#2d6cdf",0,0,8,2); f("#fff",0,2,8,2); f("#2d6cdf",0,4,8,2);
+      [2,4,6].forEach(q=>f("#2d6cdf",q,2,1,1)); [3,5].forEach(q=>f("#2d6cdf",q,3,1,1));
+    } else if(i===3){                                            // Nicaragua: azul, blanco, azul con escudo
+      f("#1f7fd1",0,0,8,2); f("#fff",0,2,8,2); f("#1f7fd1",0,4,8,2);
+      f("#c9a227",3,2,2,1); f("#2f9e44",3,3,2,1); f("#4da3ff",4,3,1,1);
+    } else {                                                     // Costa Rica: azul, blanco, rojo, blanco, azul
+      R("#2d4fb5",x+1,-46,8,1); R("#fff",x+1,-45,8,1); R("#e63946",x+1,-44,8,2);
+      R("#fff",x+1,-42,8,1); R("#2d4fb5",x+1,-41,8,1);
+    }
+  });
+  R("#b5543a",-10,-6,100,6); R("#d98c73",-10,-4,100,1);          // muro de ladrillo hasta el suelo
+  for(let k=-9;k<90;k+=6){ R("#d98c73",k,-6,1,2); R("#d98c73",k+3,-3,1,2); }
+  R("#8f3f2a",-10,-1,100,1);
+  texto("YO*CHOLOMA",X+1,g-18,2,["#ffd23f","#2fbf71","#e63946","#3a86ff","#f78fb3","#2b6fff","#2ec4b6","#2fbf71","#ff7a1a","#ff9a3c"]);
+}
+
+/* ---------- parada 2: SAN PEDRO SULA (catedral) ---------- */
+function dibujaSPS(X,g){
+  const R=(c,x,y,w,h)=>rect(c,X+x,g+y,w,h);
+  const B="#f3f0ea",S="#d8d3c9",C="#b9553d",D="#b9553d",K="#2a2030",V="#4a7fb5";
+  // fachada central con contorno de volutas
+  R(B,18,-24,46,24); R(B,24,-28,34,4); R(B,30,-31,22,3);
+  R(C,30,-32,22,1); R(C,24,-29,6,1); R(C,52,-29,6,1); R(C,18,-24,6,1); R(C,58,-24,6,1);
+  R(C,22,-27,3,3); R(C,57,-27,3,3); R(C,28,-31,2,2); R(C,52,-31,2,2);
+  R(B,25,-37,2,8); R(B,25,-39,2,2); R(B,55,-37,2,8); R(B,55,-39,2,2);          // pináculos
+  // bloque central rojo con balcón y columnas
+  R(C,34,-36,14,26); R(D,34,-36,1,26); R(D,47,-36,1,26);
+  R(B,39,-34,5,5); R("#4a6a7a",40,-33,3,3);
+  R(K,38,-26,6,8); R(B,37,-27,1,9); R(B,44,-27,1,9); R(B,37,-18,8,2); R(D,36,-19,10,1);
+  // pórtico inferior
+  R(C,28,-12,26,12); R(D,27,-13,28,1);
+  [32,39,46].forEach(x=>{R(K,x,-8,4,8);R(D,x,-9,4,1);}); [37,44].forEach(x=>R(B,x,-9,1,9));
+  R(S,23,-12,3,3); R(S,57,-12,3,3);                                              // urnas
+  [22,59].forEach(x=>{R(C,x-1,-14,5,1);R(V,x,-13,3,7);R("#9ec5e8",x+1,-13,1,7);}); // vitrales
+  // torres idénticas (la izquierda replica la derecha)
+  [0,64].forEach((tx,i)=>{
+    R(B,tx,-38,18,38); R(S,i?tx+17:tx,-38,1,38); R(C,tx+1,-36,2,12); R(C,tx+15,-36,2,12);
+    R(C,tx+4,-35,8,1); R(C,tx+4,-34,1,10); R(C,tx+11,-34,1,10); R(K,tx+5,-33,6,9); R("#c9a227",tx+7,-28,2,3);
+    R(B,tx-1,-24,20,2); R(C,tx-1,-22,20,1); R(C,tx+5,-18,6,1); R(V,tx+6,-17,4,8); R("#9ec5e8",tx+7,-16,1,7);
+    R(C,tx+2,-40,14,2); R(C,tx+4,-42,10,2); R(C,tx+6,-44,6,2);
+    R(B,tx,-41,2,3); R(B,tx+16,-41,2,3); R("#9a9a9a",tx+9,-48,1,4); R("#9a9a9a",tx+8,-47,3,1);
+  });
+  // faroles y palmera
+  [16,62].forEach(x=>{R("#222",x,-16,1,16);R("#222",x-1,-18,3,2);});
+  palma(R,84,26);
+}
+
+/* ---------- edificio moderno ---------- */
+function edificio(R,x,w,h,c,borde,tipo){
+  R(c,x,-h,w,h); R(borde,x,-h,w,1); R(borde,x+w-1,-h+1,1,h-1);
+  for(let yy=-h+3; yy<-4; yy+=3) for(let xx=x+2; xx<x+w-2; xx+=2){
+    const on=(((xx+40)*7+(yy+80)*13)&7)<3;
+    R(on?"#ffd36b":"#6f93c9",xx,yy,1,2);
+  }
+  R("#0d1230",x+((w-4)>>1),-4,4,4);                              // entrada de vidrio
+  if(tipo){ R(borde,x+2,-h-2,w-4,2); R("#9a9a9a",x+(w>>1),-h-6,1,4); R("#ff4d4d",x+(w>>1),-h-7,1,1); }
+  else    { R(borde,x+1,-h-1,w-2,1); R("#9a9a9a",x+2,-h-5,1,4); R("#ff4d4d",x+2,-h-6,1,1); }
+}
+
+/* ---------- platillo volador ---------- */
+function platillo(x,y,t,i,rayo){
+  x=Math.floor(x); y=Math.floor(y);
+  if(rayo){                                                      // rayo tractor
+    ctx.globalAlpha=.22;
+    for(let k=3;k<36;k++){ const hw=2+Math.floor(k*.22); rect("#fff1b8",x+7-hw,y+k,hw*2,1); }
+    ctx.globalAlpha=1;
+  }
+  rect("#8fe3ff",x+5,y-2,4,1); rect("#bff3ff",x+4,y-1,6,1);      // cúpula
+  rect("#cfd3e3",x,y,14,1); rect("#8c93ab",x+1,y+1,12,1); rect("#5b6280",x+3,y+2,8,1);
+  const L=["#ff4d4d","#ffd36b","#4dff88"];
+  [2,6,10].forEach((lx,k)=>rect(L[(Math.floor(t*3)+k+i)%3],x+lx,y,1,1));
+}
+
+/* ---------- carro volador ---------- */
+function carro(x,y,t,i,dir){
+  x=Math.floor(x); y=Math.floor(y);
+  const Q=(c,dx,dy,w,h)=>rect(c,dir>0?x+dx:x+22-dx-w,y+dy,w,h);
+  const f=Math.floor(t*10+i)%2;
+  [5,16].forEach(wx=>{                                           // propulsores
+    Q("#ffffff",wx,3,2,1); Q("#bfe3ff",wx,4,2,2+f); Q("#4da3ff",wx,6+f,2,2); Q("#2d6cdf",wx,8+f,2,1);
+  });
+  Q("#f2f4f8",8,-4,7,1); Q("#f2f4f8",5,-3,12,1);                 // techo y cabina
+  Q("#4a6a9a",7,-3,6,1); Q("#9ad0f0",8,-3,2,1);                  // vidrios
+  Q("#ffffff",1,-2,20,1); Q("#dfe3ec",0,-1,22,1); Q("#c9d0e0",2,-1,18,1);   // carrocería
+  Q("#9aa1b5",1,0,20,1); Q("#6a7088",3,1,16,1);                  // faldón
+  Q("#ff4d4d",0,-2,1,1); Q("#fff7b0",21,-1,1,1);                 // luces
+  [4,15].forEach(wx=>{ Q("#111",wx,-1,4,4); Q("#999",wx+1,0,2,2); });   // ruedas
+}
+
+/* ---------- parada 3: SAN JOSÉ DE COLINAS ---------- */
+function dibujaColinas(X,g){
+  const R=(c,x,y,w,h)=>rect(c,X+x,g+y,w,h);
+  const B="#f1e8c9",SH="#d8cfae",Y="#f2b81c",DR="#8b2e2a",DM="#f4f1ea";
+  // edificios modernos a los lados
+  edificio(R,-30,10,40,"#2b3a67","#7aa2e0",0);
+  edificio(R,-19,12,28,"#38496f","#9ad0f0",1);
+  edificio(R,72,12,52,"#2b3a67","#7aa2e0",0);
+  edificio(R,86,14,36,"#3b4d7a","#9ad0f0",1);
+  edificio(R,101,12,62,"#26335c","#7aa2e0",0);
+  edificio(R,115,11,34,"#38496f","#9ad0f0",1);
+  R(B,0,-14,10,14); R(Y,0,-14,10,1);                             // capilla con cúpula blanca
+  R(DM,1,-17,8,3); R(DM,2,-19,6,2); R(DM,3,-20,4,1); R(Y,1,-17,8,1); R("#777",5,-23,1,3); R("#777",4,-22,3,1);
+  R("#b5412e",9,-17,12,3); R("#c9553f",9,-17,12,1);              // techo de teja de la nave
+  R(B,23,-33,8,19); R(Y,23,-33,8,1);                             // torre central con reloj
+  R("#e9ecef",25,-31,4,4); R("#222",27,-30,1,2);
+  R(DM,24,-35,6,2); R(DM,25,-37,4,2); R(DM,26,-38,2,1); R("#777",27,-42,1,4); R("#777",26,-41,3,1);
+  [8,34].forEach(tx=>{                                           // torres con campanario
+    R(B,tx,-30,12,30); R(SH,tx+11,-30,1,30); R(Y,tx,-30,12,2); R(Y,tx,-17,12,1);
+    R(Y,tx,-16,1,16); R(Y,tx+11,-16,1,16);
+    R("#3b2f2a",tx+4,-27,4,9); R(Y,tx+3,-28,6,1); R("#c9a227",tx+5,-22,2,2);
+    R(Y,tx+1,-32,10,2); R(B,tx+3,-34,6,2); R(Y,tx+3,-35,6,1); R("#777",tx+6,-39,1,3); R("#777",tx+5,-38,3,1);
+    R("#5a7fa8",tx+5,-12,2,4); R(Y,tx+4,-13,4,1);
+  });
+  R(B,20,-16,14,16); R(Y,20,-16,14,1); R(Y,20,-14,1,14); R(Y,33,-14,1,14);   // fachada central
+  for(let i=0;i<5;i++) R(Y,20+i,-17-i,14-2*i,1);                  // frontón amarillo
+  for(let i=0;i<4;i++) R(B,22+i,-17-i,10-2*i,1);
+  R("#d9b24a",26,-19,2,2);
+  R(Y,23,-12,8,12); R(Y,25,-13,4,1); R(DR,24,-11,6,11); R("#5e1c1a",27,-11,1,11);   // puerta
+  R(Y,21,-4,2,3); R(Y,31,-4,2,3); R(SH,22,-1,10,1);
+  R("#9c3f35",0,-3,9,3); R("#222",0,-5,9,1);                      // muro de ladrillo y reja
+  
+  R("#2f6b3d",46,-14,3,14); R("#2f6b3d",47,-17,1,3); R("#1f4d33",46,-10,1,10);   // ciprés
+  R("#2d7a42",34,-5,12,5); R("#ff9a3c",36,-4,1,1); R("#e63946",39,-3,1,1); R("#ff9a3c",42,-4,1,1);
+  R("#d35a2a",52,-17,36,2); R("#e07a3c",54,-19,32,2); R("#d35a2a",58,-21,24,2);   // kiosco amarillo
+  R("#e07a3c",64,-23,12,2); R("#d35a2a",68,-25,4,2);
+  for(let k=54;k<86;k+=3) R("#b5412e",k,-17,1,2);
+  R("#b5412e",54,-15,34,1); R("#f2c230",54,-14,34,1);
+  [56,66,76,85].forEach(x=>R("#f2b81c",x,-13,3,13));
+  R("#b5412e",54,-2,36,2);
+  R("#c0392b",50,-14,1,14); R("#ffd36b",49,-16,3,2);              // faroles
+  R("#c0392b",88,-14,1,14); R("#ffd36b",87,-16,3,2);
+}
+const DIBUJA = {cho:dibujaCholoma, sps:dibujaSPS, col:dibujaColinas};
+
+/* ---------- personajes ---------- */
+function ladron(x,y,p){
+  x=Math.floor(x);
+  rect("#111",x+1,y-8,3,1); rect("#f1c27d",x+1,y-7,3,1); rect("#111",x+1,y-6,3,1);
+  rect("#2b2b3a",x,y-5,5,2); rect("#c0392b",x+1,y-3,3,1); rect("#c0392b",x+4,y-6,1,1);
+  rect("#111",x+1+p,y-2,1,2); rect("#111",x+3-p,y-2,1,2);
+}
+function chica(x,y,t){
+  x=Math.floor(x);                                                // sin saltitos
+  const P="#8a4a2b",P2="#b06a3f",K="#f8dcc8",V="#9aab5c",E="#a6e1ff",N="#15151c";
+  rect(P,x,y-8,5,1);                                               // pelo castaño rojizo
+  rect(P,x,y-7,1,1); rect(K,x+1,y-7,3,1); rect(P,x+4,y-7,1,1);
+  rect(E,x+1,y-7,1,1); rect(E,x+3,y-7,1,1);                       // ojos celestes claros
+  rect(P,x,y-6,1,1); rect(K,x+1,y-6,3,1); rect(P,x+4,y-6,1,1);
+  rect(P,x,y-5,1,1); rect(V,x+1,y-5,3,1); rect(P,x+4,y-5,1,1);   // pelo hasta los hombros
+  rect(K,x,y-4,1,1); rect(V,x+1,y-4,3,1); rect(K,x+4,y-4,1,1);   // brazos a los lados
+  rect(K,x,y-3,1,1); rect(V,x+1,y-3,3,1); rect(K,x+4,y-3,1,1);
+  rect(N,x+1,y-2,3,1); rect(N,x+1,y-1,3,1);   // pantalón negro, piernas rectas
+}
+
+/* ---------- el bus ---------- */
+function dibujaBus(bx,ry,t,vel,dentro){
+  const by = ry-6 + ((vel>.2 && Math.floor(t*9)%5===0)?1:0);
+  rect("#8a5a2b",bx+5,by-2,8,2); rect("#2d6cdf",bx+15,by-3,5,3);
+  rect("#f2c230",bx,by,28,8); rect("#d9a514",bx,by,28,1); rect("#c0392b",bx,by+6,28,1);
+  for(let i=0;i<5;i++){
+    const wx = bx+2+i*4;
+    rect("#9ad0f0",wx,by+2,3,3);
+    if(i===2 && dentro){                                         // el ladrón dentro del bus
+      rect("#111",wx,by+2,3,3); rect("#f1c27d",wx,by+3,3,1);
+    }
+  }
+  rect("#a07a10",bx+21,by+2,2,6);                                // puerta
+  rect("#bfe3ff",bx+23,by+2,4,4); rect("#fff7b0",bx+27,by+6,1,1);
+  const sp = Math.floor(dist*20)%2;
+  [4,19].forEach(wx=>{ rect("#111",bx+wx,by+7,4,4); rect("#999",bx+wx+1+sp,by+8+sp,2,2); });
+  if(vel>.2) for(let k=0;k<3;k++) rect("#d8d8e4",bx-2-k*3-((Math.floor(t*8)+k)%2),by+7-k,1+(k%2),1);
+}
+
+/* ---------- estado y animación ---------- */
+const SP=44, T=30;                  // velocidad del mundo y posición de parada
+const S={vel:0,go:0,stops:[{k:"cho",x:T}],arr:null,walk:null,tx:44,paso:0,dentro:false,gx:null};
+let last=0;
+function dibuja(ms){
+  const t = ms/1000;
+  const dt = Math.min(.05, Math.max(0,(ms-last)/1000)); last = ms;
+  const n = S.stops[S.stops.length-1];
+  if(S.arr && n){
+    const rem = n.x-T;
+    if(rem<=.3){ S.vel=0; n.x=T; const r=S.arr; S.arr=null; r(); }
+    else S.vel = Math.min(1,Math.max(.12,rem/45));
+  } else S.vel += (S.go-S.vel)*Math.min(1,dt*2.5);
+  dist += S.vel*dt;
+  S.stops.forEach(s=>s.x -= S.vel*SP*dt);
+  S.stops = S.stops.filter(s=>s.x>-100);
+  if(S.walk){
+    const d=S.walk.x-S.tx;
+    S.tx += Math.sign(d)*Math.min(Math.abs(d),22*dt);
+    S.paso = Math.floor(t*8)%2;
+    if(Math.abs(S.walk.x-S.tx)<.01){ const r=S.walk.r; S.walk=null; r(); }
+  } else S.paso=0;
+
+  const alto = Math.ceil(H*.78/CIELO.length);
+  CIELO.forEach((c,i)=>rect(c,0,i*alto,W,alto+1));
+  const sx=W*.72, sy=H*.50, r=10;
+  for(let y=-r-2;y<=r+2;y++)for(let x=-r-2;x<=r+2;x++){
+    const d=x*x+y*y;
+    if(d<=r*r) rect("#fff1b8",sx+x,sy+y,1,1); else if(d<=(r+2)*(r+2)) rect("#ffe08a",sx+x,sy+y,1,1);
+  }
+  [[8,14,5],[60,8,7],[110,20,6],[150,11,5],[190,9,6]].forEach(([cx,cy,s],i)=>{
+    const x=((cx+t*(2+i))%(W+40))-20;
+    rect("#ffe9d6",x,cy,s*2,2); rect("#ffe9d6",x+2,cy-2,s,2); rect("#ffd9c2",x,cy+2,s*2,1);
+  });
+  const colS=S.stops.find(q=>q.k==="col");
+  if(colS){
+    [[-18,34],[10,16],[55,26],[95,12],[130,30]].forEach(([ox,oy],i)=>{
+      const px=colS.x+ox+Math.sin(t*.7+i*2)*3, py=oy+Math.sin(t*1.5+i)*2;
+      if(i===1||i===3||i===4) carro(px,py,t,i,i===3?1:-1);        // carros voladores
+      else platillo(px,py,t,i,i===2);
+    });
+  }
+  CAPAS.forEach((L,li)=>{
+    for(let x=0;x<W;x++){ const y=hy(L,x); rect(L.c,x,y,1,H-y); rect(L.top,x,y,1,1); }
+    if(li>0){
+      const paso = li===2?21:29, off=dist*L.v, k0=-(off%paso);
+      for(let sxp=k0; sxp<W+8; sxp+=paso){
+        const px=Math.floor(sxp), y=hy(L,px), k=li===2?1:0;
+        rect("#5a3a1e",px+1,y-2-k,1,2+k); rect("#1f5a30",px,y-4-k,3,2); rect("#2d7a42",px+1,y-6-k,1,2);
+      }
+    }
+  });
+
+  const ry = H-8;
+  rect("#a39a86",0,ry-2,W,2);                                    // acera continua
+  S.stops.forEach(s=>{
+    DIBUJA[s.k](Math.floor(s.x),ry);
+    const px=Math.floor(s.x)+9;                                  // letrero de parada de bus
+    rect("#777",px+1,ry-8,1,8); rect("#2d6cdf",px-1,ry-10,5,4); rect("#fff",px+1,ry-9,1,2);
+  });
+  if(!S.dentro) ladron(S.tx,ry,S.paso);
+  if(S.gx!==null) chica(S.gx,ry,t);
+
+  rect("#34344a",0,ry,W,8); rect("#555570",0,ry,W,1);
+  const dd=Math.floor(dist*SP);
+  for(let x=0;x<W;x++) if(((x+dd)%10)<5) rect("#f5d142",x,ry+4,1,1);
+  dibujaBus(6,ry,t,S.vel,S.dentro);
+  requestAnimationFrame(dibuja);
+}
+requestAnimationFrame(dibuja);
+
+/* ---------- guion ---------- */
+const esperar = ms => new Promise(r=>setTimeout(r,ms));
+const caminar = x => new Promise(r=>{ S.walk={x,r}; });
+const llegar  = () => new Promise(r=>{ S.arr=r; });
+function say(txt){
+  return new Promise(r=>{
+    $("texto").innerHTML = `<span class="fade">${txt}</span>`;
+    ir(0);
+    $("sig").onclick = () => { ir(-1); r(); };
+  });
+}
+async function viaje(txt,k){
+  $("viaje").textContent = txt; $("viaje").classList.add("on");
+  S.go = 1; await esperar(1800);
+  S.stops.push({k,x:W+20});
+  await llegar();
+  S.go = 0; $("viaje").classList.remove("on");
+  await esperar(500);
+}
+async function guion(){
+  await say(T_INICIO);                                  // Choloma
+  await caminar(27); S.dentro = true; await esperar(500);
+  await viaje("🚌💨 RUMBO A SAN PEDRO SULA…","sps");   // San Pedro Sula
+  S.dentro = false; S.tx = 27; await caminar(44);
+  await say(T_SPS);
+  await caminar(27); S.dentro = true; await esperar(500);
+  await viaje("🚌💨 RUMBO A SAN JOSÉ DE COLINAS…","col"); // Colinas
+  S.dentro = false; S.tx = 27; await caminar(44);
+  S.gx = 90;
+  await say(T_CHICA);
+  await caminar(80);
+  await say(T_FINAL);
+  $("dia").textContent = `📅 ${DIA}`;
+  ir(1);
+}
+setTimeout(guion,600);
+</script>
+</body>
+</html>
